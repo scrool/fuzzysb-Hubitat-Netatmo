@@ -43,20 +43,20 @@ mappings {
 
 
 def authPage() {
-	log.debug "In authPage"
+	if (logEnable) log.debug "In authPage"
 
 	def description
 	def uninstallAllowed = false
 	def oauthTokenProvided = false
 
 	if (!state.accessToken) {
-		log.debug "About to create access token."
+		if (logEnable) log.debug "About to create access token."
 		state.accessToken = createAccessToken()
-		log.debug "Access token is : ${state.accessToken}"
+		if (logEnable) log.debug "Access token is : ${state.accessToken}"
 	}
 
 	def redirectUrl = getBuildRedirectUrl()
-	// log.debug "Redirect url = ${redirectUrl}"
+	// if (logEnable) log.debug "Redirect url = ${redirectUrl}"
 
 	if (state.authToken) {
 		description = "Tap 'Next' to proceed"
@@ -67,7 +67,7 @@ def authPage() {
 	}
 
 	if (!oauthTokenProvided) {
-		log.debug "Showing the login page"
+		if (logEnable) log.debug "Showing the login page"
 		return dynamicPage(name: "Credentials", title: "Authorize Connection", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
 			section("Enter Netatmo Application Details...") {
 				paragraph "you can get these details after creating a new application on https:\\developer.netatmo.com"
@@ -80,7 +80,7 @@ def authPage() {
 			}
 		}
 	} else {
-		log.debug "Showing the devices page"
+		if (logEnable) log.debug "Showing the devices page"
 		return dynamicPage(name: "Credentials", title: "Connected", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
 			section() {
 				input(name:"Devices", style:"embedded", required:false, title:"Netatmo is now connected to Hubitat!", description:description)
@@ -91,10 +91,10 @@ def authPage() {
 
 
 def oauthInitUrl() {
-	log.debug "In oauthInitUrl"
+	if (logEnable) log.debug "In oauthInitUrl"
 	a
 	state.oauthInitState = UUID.randomUUID().toString()
-	log.debug "oAuthInitStateIs: ${state.oauthInitState}"
+	if (logEnable) log.debug "oAuthInitStateIs: ${state.oauthInitState}"
 
 	def oauthParams = [
 		response_type: "code",
@@ -116,30 +116,30 @@ def oauthInitUrl() {
 
 	def authRequest = authMethod.getAt(authMethod)
 	try{
-		log.debug "Executing 'SendCommand'"
+		if (logEnable) log.debug "Executing 'SendCommand'"
 		if (authMethod == "location"){
-			log.debug "Executing 'SendAuthRequest'"
+			if (logEnable) log.debug "Executing 'SendAuthRequest'"
 			httpGet(authRequest) { authResp ->
 				parseAuthResponse(authResp)
 			}
 		}
 	}
 	catch(Exception e){
-		log.debug("___exception: " + e)
+		if (logEnable) log.debug("___exception: " + e)
 	}
 
-	log.debug "REDIRECT URL: ${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"
+	if (logEnable) log.debug "REDIRECT URL: ${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"
 
 	return "${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"
 }
 
 private parseAuthResponse(resp) {
-	log.debug("Executing parseAuthResponse: "+resp.data)
-	log.debug("Output status: "+resp.status)
+	if (logEnable) log.debug("Executing parseAuthResponse: "+resp.data)
+	if (logEnable) log.debug("Output status: "+resp.status)
 }
 
 def callback() {
-	log.debug "callback()>> params: $params, params.code ${params.code}"
+	if (logEnable) log.debug "callback()>> params: $params, params.code ${params.code}"
 
 	def code = params.code
 	def oauthState = params.state
@@ -155,7 +155,7 @@ def callback() {
 			scope: "read_station"
 		]
 
-		log.debug "TOKEN URL: ${getVendorTokenPath() + toQueryString(tokenParams)}"
+		if (logEnable) log.debug "TOKEN URL: ${getVendorTokenPath() + toQueryString(tokenParams)}"
 
 		def tokenUrl = getVendorTokenPath()
 		def params = [
@@ -164,7 +164,7 @@ def callback() {
 			body: tokenParams
 		]
 
-		log.debug "PARAMS: ${params}"
+		if (logEnable) log.debug "PARAMS: ${params}"
 
 		httpPost(params) { resp ->
 
@@ -176,7 +176,7 @@ def callback() {
 				state.refreshToken = data.refresh_token
 				state.authToken = data.access_token
 				state.tokenExpires = now() + (data.expires_in * 1000)
-				// log.debug "swapped token: $resp.data"
+				// if (logEnable) log.debug "swapped token: $resp.data"
 			}
 		}
 
@@ -193,7 +193,7 @@ def callback() {
 }
 
 def success() {
-	log.debug "OAuth flow succeeded"
+	if (logEnable) log.debug "OAuth flow succeeded"
 	def message = """
 	<p>We have located your """ + getVendorName() + """ account.</p>
 	<p>Close this page and install the application again. you will not be prompted for credentials next time.</p>
@@ -202,7 +202,7 @@ def success() {
 }
 
 def fail() {
-	log.debug "OAuth flow failed"
+	if (logEnable) log.debug "OAuth flow failed"
 	def message = """
 	<p>The connection could not be established!</p>
 	<p>Close this page and attempt install the application again.</p>
@@ -289,7 +289,7 @@ def connectionStatus(message, redirectUrl = null) {
 }
 
 def refreshToken() {
-	log.debug "In refreshToken"
+	if (logEnable) log.debug "In refreshToken"
 
 	def oauthParams = [
 		client_secret: getClientSecret(),
@@ -312,7 +312,7 @@ def refreshToken() {
 
 			response.data.each {key, value ->
 				def data = slurper.parseText(key);
-				// log.debug "Data: $data"
+				// if (logEnable) log.debug "Data: $data"
 
 				state.refreshToken = data.refresh_token
 				state.accessToken = data.access_token
@@ -322,7 +322,7 @@ def refreshToken() {
 
 		}
 	} catch (Exception e) {
-		log.debug "Error: $e"
+		if (logEnable) log.debug "Error: $e"
 	}
 
 	// We didn't get an access token
@@ -336,13 +336,13 @@ String toQueryString(Map m) {
 }
 
 def installed() {
-	log.debug "Installed with settings: ${settings}"
+	if (logEnable) log.debug "Installed with settings: ${settings}"
 
 	initialize()
 }
 
 def updated() {
-	log.debug "Updated with settings: ${settings}"
+	if (logEnable) log.debug "Updated with settings: ${settings}"
 
 	unsubscribe()
 	unschedule()
@@ -350,7 +350,7 @@ def updated() {
 }
 
 def initialize() {
-	log.debug "Initialized with settings: ${settings}"
+	if (logEnable) log.debug "Initialized with settings: ${settings}"
 
 	// Pull the latest device info into state
 	getDeviceList();
@@ -362,23 +362,23 @@ def initialize() {
 		try {
 			switch(detail?.type) {
 				case 'NAMain':
-					log.debug "Creating Base station, DeviceID: ${deviceId} Device name: ${detail.module_name}"
+					if (logEnable) log.debug "Creating Base station, DeviceID: ${deviceId} Device name: ${detail.module_name}"
 					createChildDevice("Netatmo Basestation", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
 				case 'NAModule1':
-					log.debug "Creating Outdoor module, DeviceID: ${deviceId} Device name: ${detail.module_name}"
+					if (logEnable) log.debug "Creating Outdoor module, DeviceID: ${deviceId} Device name: ${detail.module_name}"
 					createChildDevice("Netatmo Outdoor Module", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
 				case 'NAModule3':
-					log.debug "Creating Rain Gauge, DeviceID: ${deviceId} Device name: ${detail.module_name}"
+					if (logEnable) log.debug "Creating Rain Gauge, DeviceID: ${deviceId} Device name: ${detail.module_name}"
 					createChildDevice("Netatmo Rain", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
 				case 'NAModule4':
-					log.debug "Creating Additional module, DeviceID: ${deviceId} Device name: ${detail.module_name}"
+					if (logEnable) log.debug "Creating Additional module, DeviceID: ${deviceId} Device name: ${detail.module_name}"
 					createChildDevice("Netatmo Additional Module", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
 				case 'NAModule2':
-					log.debug "Creating Wind module, DeviceID: ${deviceId} Device name: ${detail.module_name}"
+					if (logEnable) log.debug "Creating Wind module, DeviceID: ${deviceId} Device name: ${detail.module_name}"
 					createChildDevice("Netatmo Wind", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
 			}
@@ -389,7 +389,7 @@ def initialize() {
 
 	// Cleanup any other devices that need to go away
 	def delete = getChildDevices().findAll { !settings.devices.contains(it.deviceNetworkId) }
-	log.debug "Delete: $delete"
+	if (logEnable) log.debug "Delete: $delete"
 	delete.each { deleteChildDevice(it.deviceNetworkId) }
 
 	// check if user has set location
@@ -401,13 +401,13 @@ def initialize() {
 }
 
 def uninstalled() {
-	log.debug "In uninstalled"
+	if (logEnable) log.debug "In uninstalled"
 
 	removeChildDevices(getChildDevices())
 }
 
 def getDeviceList() {
-	log.debug "Refreshing station data"
+	if (logEnable) log.debug "Refreshing station data"
 	def deviceList = [:]
 	def moduleName = null
 	state.deviceDetail = [:]
@@ -457,9 +457,9 @@ def getDeviceList() {
 }
 
 private removeChildDevices(delete) {
-	log.debug "In removeChildDevices"
+	if (logEnable) log.debug "In removeChildDevices"
 
-	log.debug "deleting ${delete.size()} devices"
+	if (logEnable) log.debug "deleting ${delete.size()} devices"
 
 	delete.each {
 		deleteChildDevice(it.deviceNetworkId)
@@ -467,15 +467,15 @@ private removeChildDevices(delete) {
 }
 
 def createChildDevice(deviceFile, dni, name, label) {
-	log.debug "In createChildDevice"
+	if (logEnable) log.debug "In createChildDevice"
 
 	try {
 		def existingDevice = getChildDevice(dni)
 		if(!existingDevice) {
-			log.debug "Creating child"
+			if (logEnable) log.debug "Creating child"
 			def childDevice = addChildDevice("scrool", deviceFile, dni, null, [name: name, label: label, completedSetup: true])
 		} else {
-			log.debug "Device $dni already exists"
+			if (logEnable) log.debug "Device $dni already exists"
 		}
 	} catch (e) {
 		log.error "Error creating device: ${e}"
@@ -483,7 +483,7 @@ def createChildDevice(deviceFile, dni, name, label) {
 }
 
 def listDevices() {
-	log.debug "Listing devices $devices "
+	if (logEnable) log.debug "Listing devices $devices "
 
 	def devices = getDeviceList()
 
@@ -498,6 +498,7 @@ def listDevices() {
 			input "windUnits", "enum", title: "Wind Units", description: "Please select wind units", required: true, options: [kph:'kph', ms:'ms', mph:'mph', kts:'kts']
 			input "time", "enum", title: "Time Format", description: "Please select time format", required: true, options: [12:'12 Hour', 24:'24 Hour']
 			input "sound", "number", title: "Sound Sensor: \nEnter the value when sound will be marked as detected", description: "Please enter number", required: false
+            input "logEnable", "bool", title: "Enable debug logging", defaultValue: true
 		}
 	}
 }
@@ -513,7 +514,7 @@ def apiGet(String path, Map query, Closure callback) {
 		path: path,
 		'query': query
 	]
-	// log.debug "API Get: $params"
+	// if (logEnable) log.debug "API Get: $params"
 
 	try {
 		httpGet(params)	{ response ->
@@ -521,9 +522,9 @@ def apiGet(String path, Map query, Closure callback) {
 		}
 	} catch (Exception e) {
 		// This is most likely due to an invalid token. Try to refresh it and try again.
-		log.debug "apiGet: Call failed $e"
+		if (logEnable) log.debug "apiGet: Call failed $e"
 		if(refreshToken()) {
-			log.debug "apiGet: Trying again after refreshing token"
+			if (logEnable) log.debug "apiGet: Trying again after refreshing token"
 			httpGet(params) { response ->
 				callback.call(response)
 			}
@@ -536,11 +537,11 @@ def apiGet(String path, Closure callback) {
 }
 
 def poll() {
-	log.debug "Polling"
+	if (logEnable) log.debug "Polling"
 	getDeviceList();
 	def children = getChildDevices()
-	//log.debug "State: ${state.deviceState}"
-	//log.debug "Time Zone: ${location.timeZone}"
+	//if (logEnable) log.debug "State: ${state.deviceState}"
+	//if (logEnable) log.debug "Time Zone: ${location.timeZone}"
 
 
 	settings.devices.each { deviceId ->
@@ -548,10 +549,10 @@ def poll() {
 		def data = state?.deviceState[deviceId]
 		def child = children?.find { it.deviceNetworkId == deviceId }
 
-		//log.debug "Update: $child";
+		//if (logEnable) log.debug "Update: $child";
 		switch(detail?.type) {
 			case 'NAMain':
-				log.debug "Updating Basestation $data"
+				if (logEnable) log.debug "Updating Basestation $data"
 				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float, unit: getTemperatureScale())
 				child?.sendEvent(name: 'carbonDioxide', value: data['CO2'], unit: "ppm")
 				child?.sendEvent(name: 'humidity', value: data['Humidity'], unit: "%")
@@ -568,7 +569,7 @@ def poll() {
 				child?.sendEvent(name: 'date_max_temp', value: lastUpdated(data['date_max_temp']), unit: "")
 				break;
 			case 'NAModule1':
-				log.debug "Updating Outdoor Module $data"
+				if (logEnable) log.debug "Updating Outdoor Module $data"
 				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float, unit: getTemperatureScale())
 				child?.sendEvent(name: 'humidity', value: data['Humidity'], unit: "%")
 				child?.sendEvent(name: 'temp_trend', value: data['temp_trend'], unit: "")
@@ -580,7 +581,7 @@ def poll() {
 				child?.sendEvent(name: 'date_max_temp', value: lastUpdated(data['date_max_temp']), unit: "")
 				break;
 			case 'NAModule3':
-				log.debug "Updating Rain Module $data"
+				if (logEnable) log.debug "Updating Rain Module $data"
 				child?.sendEvent(name: 'rain', value: (rainToPref(data['Rain'])), unit: settings.rainUnits)
 				child?.sendEvent(name: 'rainSumHour', value: (rainToPref(data['sum_rain_1'])), unit: settings.rainUnits)
 				child?.sendEvent(name: 'rainSumDay', value: (rainToPref(data['sum_rain_24'])), unit: settings.rainUnits)
@@ -592,7 +593,7 @@ def poll() {
 				child?.sendEvent(name: 'rainSumDayUnits', value: rainToPrefUnits(data['sum_rain_24']), displayed: false)
 				break;
 			case 'NAModule4':
-				log.debug "Updating Additional Module $data"
+				if (logEnable) log.debug "Updating Additional Module $data"
 				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float, unit: getTemperatureScale())
 				child?.sendEvent(name: 'carbonDioxide', value: data['CO2'], unit: "ppm")
 				child?.sendEvent(name: 'humidity', value: data['Humidity'], unit: "%")
@@ -605,7 +606,7 @@ def poll() {
 				child?.sendEvent(name: 'date_max_temp', value: lastUpdated(data['date_max_temp']), unit: "")
 				break;
 			case 'NAModule2':
-				log.debug "Updating Wind Module $data"
+				if (logEnable) log.debug "Updating Wind Module $data"
 				child?.sendEvent(name: 'WindAngle', value: data['WindAngle'], unit: "°", displayed: false)
 				child?.sendEvent(name: 'GustAngle', value: data['GustAngle'], unit: "°", displayed: false)
 				child?.sendEvent(name: 'battery', value: detail['battery_percent'], unit: "%")
@@ -761,6 +762,6 @@ def debugEvent(message, displayEvent) {
 		descriptionText: message,
 		displayed: displayEvent
 	]
-	log.debug "Generating AppDebug Event: ${results}"
+	if (logEnable) log.debug "Generating AppDebug Event: ${results}"
 	sendEvent (results)
 }
