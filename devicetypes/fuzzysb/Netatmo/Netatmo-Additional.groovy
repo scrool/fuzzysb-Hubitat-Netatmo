@@ -11,7 +11,6 @@ metadata {
 		capability "Temperature Measurement"
 		capability "Carbon Dioxide Measurement"
 		capability "Refresh"
-		capability "Thermostat"
 
 		attribute "min_temp", "number"
 		attribute "max_temp", "number"

@@ -13,7 +13,6 @@ metadata {
 		capability "Sound Pressure Level"
 		capability "Sound Sensor"
 		capability "Refresh"
-		capability "Thermostat"
 
 		attribute "pressure", "number"
 		attribute "min_temp", "number"
