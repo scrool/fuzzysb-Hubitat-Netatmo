@@ -5,7 +5,7 @@
  */
 
 metadata {
-	definition (name: "Netatmo Rain", namespace: "fuzzysb", author: "Stuart Buchanan") {
+	definition (name: "Netatmo Rain", namespace: "scrool", author: "Stuart Buchanan, Pavol Babinčák") {
 		capability "Sensor"
 		capability "Battery"
 		capability "Refresh"

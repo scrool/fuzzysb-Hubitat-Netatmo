@@ -5,7 +5,7 @@
  */
 
 metadata {
-	definition (name: "Netatmo Basestation", namespace: "fuzzysb", author: "Stuart Buchanan") {
+	definition (name: "Netatmo Basestation", namespace: "scrool", author: "Stuart Buchanan, Pavol Babinčák") {
 		capability "Relative Humidity Measurement"
 		capability "Temperature Measurement"
 		capability "Sensor"

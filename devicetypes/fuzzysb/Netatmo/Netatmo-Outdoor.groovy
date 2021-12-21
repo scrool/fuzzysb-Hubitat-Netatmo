@@ -5,7 +5,7 @@
  */
 
 metadata {
-	definition (name: "Netatmo Outdoor Module", namespace: "fuzzysb", author: "Stuart Buchanan") {
+	definition (name: "Netatmo Outdoor Module", namespace: "scrool", author: "Stuart Buchanan, Pavol Babinčák") {
 		capability "Relative Humidity Measurement"
 		capability "Temperature Measurement"
 		capability "Sensor"
