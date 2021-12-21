@@ -17,7 +17,7 @@ private getClientSecret()	{ settings.clientSecret }
 
 private getCallbackUrl()	{ getServerUrl()+ "/oauth/callback?access_token=${state.accessToken}" }
 private getBuildRedirectUrl() { getServerUrl() + "/oauth/initialize?access_token=${state.accessToken}" }
-private getServerUrl() 		{ return getFullApiServerUrl() }
+private getServerUrl()		{ return getFullApiServerUrl() }
 
 // Automatically generated. Make future change here.
 definition(
@@ -44,7 +44,7 @@ mappings {
 
 def authPage() {
 	log.debug "In authPage"
-    
+
 	def description
 	def uninstallAllowed = false
 	def oauthTokenProvided = false
@@ -52,53 +52,50 @@ def authPage() {
 	if (!state.accessToken) {
 		log.debug "About to create access token."
 		state.accessToken = createAccessToken()
-        log.debug "Access token is : ${state.accessToken}"
+		log.debug "Access token is : ${state.accessToken}"
 	}
 
+	def redirectUrl = getBuildRedirectUrl()
+	// log.debug "Redirect url = ${redirectUrl}"
 
-		def redirectUrl = getBuildRedirectUrl()
-		// log.debug "Redirect url = ${redirectUrl}"
+	if (state.authToken) {
+		description = "Tap 'Next' to proceed"
+		uninstallAllowed = true
+		oauthTokenProvided = true
+	} else {
+		description = "Click to enter Credentials."
+	}
 
-		if (state.authToken) {
-			description = "Tap 'Next' to proceed"
-			uninstallAllowed = true
-			oauthTokenProvided = true
-		} else {
-			description = "Click to enter Credentials."
-		}
-
-		if (!oauthTokenProvided) {
-			log.debug "Showing the login page"
-			return dynamicPage(name: "Credentials", title: "Authorize Connection", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
-                section("Enter Netatmo Application Details...") {
+	if (!oauthTokenProvided) {
+		log.debug "Showing the login page"
+		return dynamicPage(name: "Credentials", title: "Authorize Connection", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
+			section("Enter Netatmo Application Details...") {
 				paragraph "you can get these details after creating a new application on https:\\developer.netatmo.com"
-                input(name: 'clientId', title: 'Client ID', type: 'text', required: true)
+				input(name: 'clientId', title: 'Client ID', type: 'text', required: true)
 				input(name: 'clientSecret', title: 'Client secret (click away from this box before pressing the button below)', type: 'text', required: true, submitOnChange: true )
-            	}
-				section() {
-					paragraph "Tap below to log in to Netatmo and authorize Hubitat access."
-					href url:oauthInitUrl(), external:true, required:false, title:"Connect to ${getVendorName()}:", description:description
-				}
 			}
-		} else {
-			log.debug "Showing the devices page"
-			return dynamicPage(name: "Credentials", title: "Connected", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
-				section() {
-					input(name:"Devices", style:"embedded", required:false, title:"Netatmo is now connected to Hubitat!", description:description) 
-				}
+			section() {
+				paragraph "Tap below to log in to Netatmo and authorize Hubitat access."
+				href url:oauthInitUrl(), external:true, required:false, title:"Connect to ${getVendorName()}:", description:description
 			}
 		}
-
+	} else {
+		log.debug "Showing the devices page"
+		return dynamicPage(name: "Credentials", title: "Connected", nextPage:"listDevices", uninstall: uninstallAllowed, install:false) {
+			section() {
+				input(name:"Devices", style:"embedded", required:false, title:"Netatmo is now connected to Hubitat!", description:description)
+			}
+		}
+	}
 }
 
 
 def oauthInitUrl() {
 	log.debug "In oauthInitUrl"
-    a
+	a
 	state.oauthInitState = UUID.randomUUID().toString()
-    log.debug "oAuthInitStateIs: ${state.oauthInitState}"
+	log.debug "oAuthInitStateIs: ${state.oauthInitState}"
 
-	
 	def oauthParams = [
 		response_type: "code",
 		client_id: getClientId(),
@@ -107,40 +104,38 @@ def oauthInitUrl() {
 		redirect_uri: getCallbackUrl(),
 		scope: "read_station"
 	]
-    
-    def authMethod = [
-        'location': [
-        			uri: getApiUrl(),
-                    path: getVendorAuthPath(),
-                    requestContentType: "application/json",
-                    query: [toQueryString(oauthParams)]
-                    ]
-    ]
-    
-    def authRequest = authMethod.getAt(authMethod)
-    try{
-        log.debug "Executing 'SendCommand'"
-          if (authMethod == "location"){
-            log.debug "Executing 'SendAuthRequest'"
-            httpGet(authRequest) { authResp ->
-                parseAuthResponse(authResp)
-            }
-          }
-    }
-    catch(Exception e){
-        log.debug("___exception: " + e)
-    }
-    
 
-    log.debug "REDIRECT URL: ${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"
-    
-    return "${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"
+	def authMethod = [
+		'location': [
+			uri: getApiUrl(),
+			path: getVendorAuthPath(),
+			requestContentType: "application/json",
+			query: [toQueryString(oauthParams)]
+		]
+	]
 
+	def authRequest = authMethod.getAt(authMethod)
+	try{
+		log.debug "Executing 'SendCommand'"
+		if (authMethod == "location"){
+			log.debug "Executing 'SendAuthRequest'"
+			httpGet(authRequest) { authResp ->
+				parseAuthResponse(authResp)
+			}
+		}
+	}
+	catch(Exception e){
+		log.debug("___exception: " + e)
+	}
+
+	log.debug "REDIRECT URL: ${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"
+
+	return "${getApiUrl()}${getVendorAuthPath()}?${toQueryString(oauthParams)}"
 }
 
 private parseAuthResponse(resp) {
 	log.debug("Executing parseAuthResponse: "+resp.data)
-    log.debug("Output status: "+resp.status)
+	log.debug("Output status: "+resp.status)
 }
 
 def callback() {
@@ -204,7 +199,6 @@ def success() {
 	<p>Close this page and install the application again. you will not be prompted for credentials next time.</p>
 	"""
 	connectionStatus(message)
-    
 }
 
 def fail() {
@@ -214,7 +208,6 @@ def fail() {
 	<p>Close this page and attempt install the application again.</p>
 	"""
 	connectionStatus(message)
-   
 }
 
 def connectionStatus(message, redirectUrl = null) {
@@ -289,8 +282,8 @@ def connectionStatus(message, redirectUrl = null) {
 				<img src="https://cdn.shopify.com/s/files/1/2575/8806/t/20/assets/logo-image-file.png" alt="Hubitat logo" />
 				${message}
 			</div>
-        </body>
-        </html>
+		</body>
+		</html>
 	"""
 	render contentType: 'text/html', data: html
 }
@@ -384,7 +377,7 @@ def initialize() {
 					log.debug "Creating Additional module, DeviceID: ${deviceId} Device name: ${detail.module_name}"
 					createChildDevice("Netatmo Additional Module", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
-                case 'NAModule2':
+				case 'NAModule2':
 					log.debug "Creating Wind module, DeviceID: ${deviceId} Device name: ${detail.module_name}"
 					createChildDevice("Netatmo Wind", deviceId, "${detail.type}.${deviceId}", detail.module_name)
 					break
@@ -400,7 +393,7 @@ def initialize() {
 	delete.each { deleteChildDevice(it.deviceNetworkId) }
 
 	// check if user has set location
-    checkloc()
+	checkloc()
 	// Do the initial poll
 	poll()
 	// Schedule it to run every 5 minutes
@@ -415,55 +408,52 @@ def uninstalled() {
 
 def getDeviceList() {
 	log.debug "Refreshing station data"
-def deviceList = [:]
-def moduleName = null
-state.deviceDetail = [:]
-state.deviceState = [:]
+	def deviceList = [:]
+	def moduleName = null
+	state.deviceDetail = [:]
+	state.deviceState = [:]
 
-apiGet("/api/getstationsdata",["get_favorites":true]) { resp ->
-    	state.response = resp.data.body
-        resp.data.body.devices.each { value ->
-            def key = value._id
-            if (value.module_name != null) {
-                deviceList[key] = "${value.station_name}: ${value.module_name}"
-                state.deviceDetail[key] = value
-                state.deviceState[key] = value.dashboard_data
-                }
+	apiGet("/api/getstationsdata",["get_favorites":true]) { resp ->
+		state.response = resp.data.body
+		resp.data.body.devices.each { value ->
+			def key = value._id
+			if (value.module_name != null) {
+				deviceList[key] = "${value.station_name}: ${value.module_name}"
+				state.deviceDetail[key] = value
+				state.deviceState[key] = value.dashboard_data
+			}
 
-            value.modules.each { value2 ->            
-                def key2 = value2._id
+			value.modules.each { value2 ->
+				def key2 = value2._id
 
 				if (value2.module_name != null) {
-                    deviceList[key2] = "${value.station_name}: ${value2.module_name}"
-                    state.deviceDetail[key2] = value2
-                    state.deviceState[key2] = value2.dashboard_data
-                    }
+					deviceList[key2] = "${value.station_name}: ${value2.module_name}"
+					state.deviceDetail[key2] = value2
+					state.deviceState[key2] = value2.dashboard_data
+				}
 				else {
-                    switch(value2.type) {
-                    case "NAModule1":
-                    	moduleName = "Outdoor ${value.station_name}" 
-                        break
-                    case "NAModule2":
-                    	moduleName = "Wind ${value.station_name}" 
-                        break
-                    case "NAModule3":
-                    	moduleName = "Rain ${value.station_name}" 
-                        break
-                    case "NAModule4":
-                    	moduleName = "Additional ${value.station_name}" 
-                        break
-                        }
-              
-                    deviceList[key2] = "${value.station_name}: ${moduleName}"
-                    state.deviceDetail[key2] = value2 << ["module_name" : moduleName]
-                    state.deviceState[key2] = value2.dashboard_data						
-                	}
-            }
-        }
-    }
-
-return deviceList.sort() { it.value.toLowerCase() }
-
+					switch(value2.type) {
+						case "NAModule1":
+							moduleName = "Outdoor ${value.station_name}"
+							break
+						case "NAModule2":
+							moduleName = "Wind ${value.station_name}"
+							break
+						case "NAModule3":
+							moduleName = "Rain ${value.station_name}"
+							break
+						case "NAModule4":
+							moduleName = "Additional ${value.station_name}"
+							break
+					}
+					deviceList[key2] = "${value.station_name}: ${moduleName}"
+					state.deviceDetail[key2] = value2 << ["module_name" : moduleName]
+					state.deviceState[key2] = value2.dashboard_data
+				}
+			}
+		}
+	}
+	return deviceList.sort() { it.value.toLowerCase() }
 }
 
 private removeChildDevices(delete) {
@@ -502,13 +492,13 @@ def listDevices() {
 			input "devices", "enum", title: "Select Device(s)", required: false, multiple: true, options: devices
 		}
 
-        section("Preferences") {
-        	input "rainUnits", "enum", title: "Rain Units", description: "Please select rain units", required: true, options: [mm:'Millimeters', in:'Inches']
-            input "pressUnits", "enum", title: "Pressure Units", description: "Please select pressure units", required: true, options: [mbar:'mbar', inhg:'inhg']            
-            input "windUnits", "enum", title: "Wind Units", description: "Please select wind units", required: true, options: [kph:'kph', ms:'ms', mph:'mph', kts:'kts']
-            input "time", "enum", title: "Time Format", description: "Please select time format", required: true, options: [12:'12 Hour', 24:'24 Hour']
-            input "sound", "number", title: "Sound Sensor: \nEnter the value when sound will be marked as detected", description: "Please enter number", required: false
-        }
+		section("Preferences") {
+			input "rainUnits", "enum", title: "Rain Units", description: "Please select rain units", required: true, options: [mm:'Millimeters', in:'Inches']
+			input "pressUnits", "enum", title: "Pressure Units", description: "Please select pressure units", required: true, options: [mbar:'mbar', inhg:'inhg']
+			input "windUnits", "enum", title: "Wind Units", description: "Please select wind units", required: true, options: [kph:'kph', ms:'ms', mph:'mph', kts:'kts']
+			input "time", "enum", title: "Time Format", description: "Please select time format", required: true, options: [12:'12 Hour', 24:'24 Hour']
+			input "sound", "number", title: "Sound Sensor: \nEnter the value when sound will be marked as detected", description: "Please enter number", required: false
+		}
 	}
 }
 
@@ -534,7 +524,7 @@ def apiGet(String path, Map query, Closure callback) {
 		log.debug "apiGet: Call failed $e"
 		if(refreshToken()) {
 			log.debug "apiGet: Trying again after refreshing token"
-			httpGet(params)	{ response ->
+			httpGet(params) { response ->
 				callback.call(response)
 			}
 		}
@@ -549,9 +539,9 @@ def poll() {
 	log.debug "Polling"
 	getDeviceList();
 	def children = getChildDevices()
-    //log.debug "State: ${state.deviceState}"
-    //log.debug "Time Zone: ${location.timeZone}"
-     
+	//log.debug "State: ${state.deviceState}"
+	//log.debug "Time Zone: ${location.timeZone}"
+
 
 	settings.devices.each { deviceId ->
 		def detail = state?.deviceDetail[deviceId]
@@ -565,29 +555,29 @@ def poll() {
 				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float, unit: getTemperatureScale())
 				child?.sendEvent(name: 'carbonDioxide', value: data['CO2'], unit: "ppm")
 				child?.sendEvent(name: 'humidity', value: data['Humidity'], unit: "%")
-                child?.sendEvent(name: 'temp_trend', value: data['temp_trend'], unit: "")                
-                child?.sendEvent(name: 'pressure', value: (pressToPref(data['Pressure'])).toDouble().trunc(2), unit: settings.pressUnits)
+				child?.sendEvent(name: 'temp_trend', value: data['temp_trend'], unit: "")
+				child?.sendEvent(name: 'pressure', value: (pressToPref(data['Pressure'])).toDouble().trunc(2), unit: settings.pressUnits)
 				child?.sendEvent(name: 'soundPressureLevel', value: data['Noise'], unit: "db")
-                child?.sendEvent(name: 'sound', value: noiseTosound(data['Noise']))
-                child?.sendEvent(name: 'pressure_trend', value: data['pressure_trend'], unit: "")
-                child?.sendEvent(name: 'min_temp', value: cToPref(data['min_temp']) as float, unit: getTemperatureScale())
-                child?.sendEvent(name: 'max_temp', value: cToPref(data['max_temp']) as float, unit: getTemperatureScale())
-                child?.sendEvent(name: 'units', value: settings.pressUnits)
-                child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "")
-                child?.sendEvent(name: 'date_min_temp', value: lastUpdated(data['date_min_temp']), unit: "")
-                child?.sendEvent(name: 'date_max_temp', value: lastUpdated(data['date_max_temp']), unit: "")
+				child?.sendEvent(name: 'sound', value: noiseTosound(data['Noise']))
+				child?.sendEvent(name: 'pressure_trend', value: data['pressure_trend'], unit: "")
+				child?.sendEvent(name: 'min_temp', value: cToPref(data['min_temp']) as float, unit: getTemperatureScale())
+				child?.sendEvent(name: 'max_temp', value: cToPref(data['max_temp']) as float, unit: getTemperatureScale())
+				child?.sendEvent(name: 'units', value: settings.pressUnits)
+				child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "")
+				child?.sendEvent(name: 'date_min_temp', value: lastUpdated(data['date_min_temp']), unit: "")
+				child?.sendEvent(name: 'date_max_temp', value: lastUpdated(data['date_max_temp']), unit: "")
 				break;
 			case 'NAModule1':
 				log.debug "Updating Outdoor Module $data"
 				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float, unit: getTemperatureScale())
 				child?.sendEvent(name: 'humidity', value: data['Humidity'], unit: "%")
-                child?.sendEvent(name: 'temp_trend', value: data['temp_trend'], unit: "")
-                child?.sendEvent(name: 'min_temp', value: cToPref(data['min_temp']) as float, unit: getTemperatureScale())
-                child?.sendEvent(name: 'max_temp', value: cToPref(data['max_temp']) as float, unit: getTemperatureScale())
-                child?.sendEvent(name: 'battery', value: detail['battery_percent'], unit: "%")
-                child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "")
-                child?.sendEvent(name: 'date_min_temp', value: lastUpdated(data['date_min_temp']), unit: "")
-                child?.sendEvent(name: 'date_max_temp', value: lastUpdated(data['date_max_temp']), unit: "")
+				child?.sendEvent(name: 'temp_trend', value: data['temp_trend'], unit: "")
+				child?.sendEvent(name: 'min_temp', value: cToPref(data['min_temp']) as float, unit: getTemperatureScale())
+				child?.sendEvent(name: 'max_temp', value: cToPref(data['max_temp']) as float, unit: getTemperatureScale())
+				child?.sendEvent(name: 'battery', value: detail['battery_percent'], unit: "%")
+				child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "")
+				child?.sendEvent(name: 'date_min_temp', value: lastUpdated(data['date_min_temp']), unit: "")
+				child?.sendEvent(name: 'date_max_temp', value: lastUpdated(data['date_max_temp']), unit: "")
 				break;
 			case 'NAModule3':
 				log.debug "Updating Rain Module $data"
@@ -595,180 +585,177 @@ def poll() {
 				child?.sendEvent(name: 'rainSumHour', value: (rainToPref(data['sum_rain_1'])), unit: settings.rainUnits)
 				child?.sendEvent(name: 'rainSumDay', value: (rainToPref(data['sum_rain_24'])), unit: settings.rainUnits)
 				child?.sendEvent(name: 'units', value: settings.rainUnits)
-                child?.sendEvent(name: 'battery', value: detail['battery_percent'], unit: "%")
-                child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "")
+				child?.sendEvent(name: 'battery', value: detail['battery_percent'], unit: "%")
+				child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "")
 				child?.sendEvent(name: 'rainUnits', value: rainToPrefUnits(data['Rain']), displayed: false)
 				child?.sendEvent(name: 'rainSumHourUnits', value: rainToPrefUnits(data['sum_rain_1']), displayed: false)
-				child?.sendEvent(name: 'rainSumDayUnits', value: rainToPrefUnits(data['sum_rain_24']), displayed: false)                
+				child?.sendEvent(name: 'rainSumDayUnits', value: rainToPrefUnits(data['sum_rain_24']), displayed: false)
 				break;
 			case 'NAModule4':
 				log.debug "Updating Additional Module $data"
 				child?.sendEvent(name: 'temperature', value: cToPref(data['Temperature']) as float, unit: getTemperatureScale())
 				child?.sendEvent(name: 'carbonDioxide', value: data['CO2'], unit: "ppm")
 				child?.sendEvent(name: 'humidity', value: data['Humidity'], unit: "%")
-                child?.sendEvent(name: 'temp_trend', value: data['temp_trend'], unit: "")                
-                child?.sendEvent(name: 'min_temp', value: cToPref(data['min_temp']) as float, unit: getTemperatureScale())
-                child?.sendEvent(name: 'max_temp', value: cToPref(data['max_temp']) as float, unit: getTemperatureScale())
-                child?.sendEvent(name: 'battery', value: detail['battery_percent'], unit: "%")
-                child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "")
-                child?.sendEvent(name: 'date_min_temp', value: lastUpdated(data['date_min_temp']), unit: "")
-                child?.sendEvent(name: 'date_max_temp', value: lastUpdated(data['date_max_temp']), unit: "")
+				child?.sendEvent(name: 'temp_trend', value: data['temp_trend'], unit: "")
+				child?.sendEvent(name: 'min_temp', value: cToPref(data['min_temp']) as float, unit: getTemperatureScale())
+				child?.sendEvent(name: 'max_temp', value: cToPref(data['max_temp']) as float, unit: getTemperatureScale())
+				child?.sendEvent(name: 'battery', value: detail['battery_percent'], unit: "%")
+				child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "")
+				child?.sendEvent(name: 'date_min_temp', value: lastUpdated(data['date_min_temp']), unit: "")
+				child?.sendEvent(name: 'date_max_temp', value: lastUpdated(data['date_max_temp']), unit: "")
 				break;
-            case 'NAModule2':
+			case 'NAModule2':
 				log.debug "Updating Wind Module $data"
 				child?.sendEvent(name: 'WindAngle', value: data['WindAngle'], unit: "°", displayed: false)
-                child?.sendEvent(name: 'GustAngle', value: data['GustAngle'], unit: "°", displayed: false)
-                child?.sendEvent(name: 'battery', value: detail['battery_percent'], unit: "%")
+				child?.sendEvent(name: 'GustAngle', value: data['GustAngle'], unit: "°", displayed: false)
+				child?.sendEvent(name: 'battery', value: detail['battery_percent'], unit: "%")
 				child?.sendEvent(name: 'WindStrength', value: (windToPref(data['WindStrength'])).toDouble().trunc(1), unit: settings.windUnits)
-                child?.sendEvent(name: 'GustStrength', value: (windToPref(data['GustStrength'])).toDouble().trunc(1), unit: settings.windUnits)
-                child?.sendEvent(name: 'max_wind_str', value: (windToPref(data['max_wind_str'])).toDouble().trunc(1), unit: settings.windUnits)
-                child?.sendEvent(name: 'units', value: settings.windUnits)
-                child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "")
-                child?.sendEvent(name: 'date_max_wind_str', value: lastUpdated(data['date_max_wind_str']), unit: "")
-                child?.sendEvent(name: 'WindDirection', value: windTotext(data['WindAngle']))
-                child?.sendEvent(name: 'GustDirection', value: gustTotext(data['GustAngle']))
+				child?.sendEvent(name: 'GustStrength', value: (windToPref(data['GustStrength'])).toDouble().trunc(1), unit: settings.windUnits)
+				child?.sendEvent(name: 'max_wind_str', value: (windToPref(data['max_wind_str'])).toDouble().trunc(1), unit: settings.windUnits)
+				child?.sendEvent(name: 'units', value: settings.windUnits)
+				child?.sendEvent(name: 'lastupdate', value: lastUpdated(data['time_utc']), unit: "")
+				child?.sendEvent(name: 'date_max_wind_str', value: lastUpdated(data['date_max_wind_str']), unit: "")
+				child?.sendEvent(name: 'WindDirection', value: windTotext(data['WindAngle']))
+				child?.sendEvent(name: 'GustDirection', value: gustTotext(data['GustAngle']))
 				child?.sendEvent(name: 'WindStrengthUnits', value: windToPrefUnits(data['WindStrength']), displayed: false)
-                child?.sendEvent(name: 'GustStrengthUnits', value: windToPrefUnits(data['GustStrength']), displayed: false)
-                child?.sendEvent(name: 'max_wind_strUnits', value: windToPrefUnits(data['max_wind_str']), displayed: false)               
-                break;
+				child?.sendEvent(name: 'GustStrengthUnits', value: windToPrefUnits(data['GustStrength']), displayed: false)
+				child?.sendEvent(name: 'max_wind_strUnits', value: windToPrefUnits(data['max_wind_str']), displayed: false)
+				break;
 		}
 	}
 }
 
 def cToPref(temp) {
 	if(getTemperatureScale() == 'C') {
-    	return temp
-    } else {
+		return temp
+	} else {
 		return temp * 1.8 + 32
-    }
+	}
 }
 
 def rainToPref(rain) {
 	if(settings.rainUnits == 'mm') {
-    	return rain.toDouble().trunc(1)
-    } else {
-    	return (rain * 0.039370).toDouble().trunc(3)
-    }
+		return rain.toDouble().trunc(1)
+	} else {
+		return (rain * 0.039370).toDouble().trunc(3)
+	}
 }
 
 def rainToPrefUnits(rain) {
 	if(settings.rainUnits == 'mm') {
-    	return rain.toDouble().trunc(1) + " mm"
-    } else {
-    	return (rain * 0.039370).toDouble().trunc(3) + " in"
-    }
+		return rain.toDouble().trunc(1) + " mm"
+	} else {
+		return (rain * 0.039370).toDouble().trunc(3) + " in"
+	}
 }
 
 def pressToPref(Pressure) {
 	if(settings.pressUnits == 'mbar') {
-    	return Pressure
-    } else {
-    	return Pressure * 0.029530
-    }
+		return Pressure
+	} else {
+		return Pressure * 0.029530
+	}
 }
 
 def windToPref(Wind) {
 	if(settings.windUnits == 'kph') {
-    	return Wind
-    } else if (settings.windUnits == 'ms') {
-    	return Wind * 0.277778
-    } else if (settings.windUnits == 'mph') {
-    	return Wind * 0.621371192
-    } else if (settings.windUnits == 'kts') {
-    	return Wind * 0.539956803
-    }
+		return Wind
+	} else if (settings.windUnits == 'ms') {
+		return Wind * 0.277778
+	} else if (settings.windUnits == 'mph') {
+		return Wind * 0.621371192
+	} else if (settings.windUnits == 'kts') {
+		return Wind * 0.539956803
+	}
 }
 
 def windToPrefUnits(Wind) {
 	if(settings.windUnits == 'kph') {
-    	return Wind
-    } else if (settings.windUnits == 'ms') {
-    	return (Wind * 0.277778).toDouble().trunc(1) +" ms"
-    } else if (settings.windUnits == 'mph') {
-    	return (Wind * 0.621371192).toDouble().trunc(1) +" mph"
-    } else if (settings.windUnits == 'kts') {
-    	return (Wind * 0.539956803).toDouble().trunc(1) +" kts"
-    }
+		return Wind
+	} else if (settings.windUnits == 'ms') {
+		return (Wind * 0.277778).toDouble().trunc(1) +" ms"
+	} else if (settings.windUnits == 'mph') {
+		return (Wind * 0.621371192).toDouble().trunc(1) +" mph"
+	} else if (settings.windUnits == 'kts') {
+		return (Wind * 0.539956803).toDouble().trunc(1) +" kts"
+	}
 }
 
 def lastUpdated(time) {
 	if(location.timeZone == null) {
-    log.warn "Time Zone is not set, time will be in UTC. Go to your ST app and set your hub location to get local time!"    
-    	def updtTime = new Date(time*1000L).format("HH:mm")
-    	state.lastUpdated = updtTime
-    return updtTime + " UTC"   
-    } else if(settings.time == '24') {
-    	def updtTime = new Date(time*1000L).format("HH:mm", location.timeZone)
-    	state.lastUpdated = updtTime
-    return updtTime
-    } else if(settings.time == '12') {
-    	def updtTime = new Date(time*1000L).format("h:mm aa", location.timeZone)
-    	state.lastUpdated = updtTime
-    return updtTime
-    }
+		log.warn "Time Zone is not set, time will be in UTC. Go to your ST app and set your hub location to get local time!"
+		def updtTime = new Date(time*1000L).format("HH:mm")
+		state.lastUpdated = updtTime
+		return updtTime + " UTC"
+	} else if(settings.time == '24') {
+		def updtTime = new Date(time*1000L).format("HH:mm", location.timeZone)
+		state.lastUpdated = updtTime
+		return updtTime
+	} else if(settings.time == '12') {
+		def updtTime = new Date(time*1000L).format("h:mm aa", location.timeZone)
+		state.lastUpdated = updtTime
+		return updtTime
+	}
 }
 
 def windTotext(WindAngle) {
-	if(WindAngle < 23) { 
-    	return WindAngle + "° North"
-    } else if (WindAngle < 68) {
-    	return WindAngle + "° NorthEast"
-    } else if (WindAngle < 113) {
-    	return WindAngle + "° East"
-    } else if (WindAngle < 158) {
-    	return WindAngle + "° SouthEast"
-    } else if (WindAngle < 203) {
-    	return WindAngle + "° South"
-    } else if (WindAngle < 248) {
-    	return WindAngle + "° SouthWest"
-    } else if (WindAngle < 293) {
-    	return WindAngle + "° West"
-    } else if (WindAngle < 338) {
-    	return WindAngle + "° NorthWest"
-    } else if (WindAngle < 361) {
-    	return WindAngle + "° North"
-    }
+	if(WindAngle < 23) {
+		return WindAngle + "° North"
+	} else if (WindAngle < 68) {
+		return WindAngle + "° NorthEast"
+	} else if (WindAngle < 113) {
+		return WindAngle + "° East"
+	} else if (WindAngle < 158) {
+		return WindAngle + "° SouthEast"
+	} else if (WindAngle < 203) {
+		return WindAngle + "° South"
+	} else if (WindAngle < 248) {
+		return WindAngle + "° SouthWest"
+	} else if (WindAngle < 293) {
+		return WindAngle + "° West"
+	} else if (WindAngle < 338) {
+		return WindAngle + "° NorthWest"
+	} else if (WindAngle < 361) {
+		return WindAngle + "° North"
+	}
 }
 
 def gustTotext(GustAngle) {
-	if(GustAngle < 23) { 
-    	return GustAngle + "° North"
-    } else if (GustAngle < 68) {
-    	return GustAngle + "° NEast"
-    } else if (GustAngle < 113) {
-    	return GustAngle + "° East"
-    } else if (GustAngle < 158) {
-    	return GustAngle + "° SEast"
-    } else if (GustAngle < 203) {
-    	return GustAngle + "° South"
-    } else if (GustAngle < 248) {
-    	return GustAngle + "° SWest"
-    } else if (GustAngle < 293) {
-    	return GustAngle + "° West"
-    } else if (GustAngle < 338) {
-    	return GustAngle + "° NWest"
-    } else if (GustAngle < 361) {
-    	return GustAngle + "° North"
-    }
+	if(GustAngle < 23) {
+		return GustAngle + "° North"
+	} else if (GustAngle < 68) {
+		return GustAngle + "° NEast"
+	} else if (GustAngle < 113) {
+		return GustAngle + "° East"
+	} else if (GustAngle < 158) {
+		return GustAngle + "° SEast"
+	} else if (GustAngle < 203) {
+		return GustAngle + "° South"
+	} else if (GustAngle < 248) {
+		return GustAngle + "° SWest"
+	} else if (GustAngle < 293) {
+		return GustAngle + "° West"
+	} else if (GustAngle < 338) {
+		return GustAngle + "° NWest"
+	} else if (GustAngle < 361) {
+		return GustAngle + "° North"
+	}
 }
 
 def noiseTosound(Noise) {
-	if(Noise > settings.sound) { 
-    	return "detected"
-    } else {
-    	return "not detected"
-    }
+	if(Noise > settings.sound) {
+		return "detected"
+	} else {
+		return "not detected"
+	}
 }
 
 def checkloc() {
-
-    if(location.timeZone == null)
+	if(location.timeZone == null)
 		sendPush("Netatmo: Time Zone is not set, time will be in UTC. Go to your ST app and set your hub location to get local time!")
-}        
-        
+}
 
 def debugEvent(message, displayEvent) {
-
 	def results = [
 		name: "appdebug",
 		descriptionText: message,
@@ -776,6 +763,4 @@ def debugEvent(message, displayEvent) {
 	]
 	log.debug "Generating AppDebug Event: ${results}"
 	sendEvent (results)
-
 }
-
